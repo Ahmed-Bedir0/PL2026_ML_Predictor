@@ -43,3 +43,32 @@ constants at the bottom of the script.  By default the model uses
 results.  After training, the script prints the predicted league
 table for 2025/26 along with a comparison to the training periods.
 
+Usage
+-----
+Run the script from a terminal with Python 3.  Ensure that
+`pandas`, `numpy` and `scikit‑learn` are installed.  All required
+CSV files should reside in the same directory as this script or an
+alternate path may be provided via the `season_files` list.
+
+Example:
+
+```
+python pl_2025_26_prediction.py
+```
+
+The script outputs a predicted ranking of the 20 clubs for the
+2025/26 Premier League season.
+"""
+
+import os
+from collections import defaultdict
+from typing import Dict, List, Tuple
+
+import numpy as np
+import pandas as pd
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import Pipeline
+
+
