@@ -53,7 +53,7 @@ alternate path may be provided via the `season_files` list.
 Example:
 
 ```
-python pl_2025_26_prediction.py
+python PL_2025-26_prediction.py
 ```
 
 The script outputs a predicted ranking of the 20 clubs for the
@@ -72,3 +72,43 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
 
 
+def parse_match_results(df: pd.DataFrame) -> pd.DataFrame:
+    """Parse final score into integer goal columns.
+
+    The raw CSV files use a `FT` column that stores the full‑time
+    result as a string such as `"2-1"`.  This helper splits the
+    column into separate home and away goal counts and returns an
+    updated DataFrame with `home_goals` and `away_goals` columns.
+
+    Parameters
+    ----------
+    df : DataFrame
+        Match data with columns `Team 1`, `Team 2` and `FT`.
+
+    Returns
+    -------
+    DataFrame
+        DataFrame with added `home_goals` and `away_goals` columns.
+    """
+    goals = df["FT"].str.split("-", expand=True)
+    df = df.copy()
+    df["home_goals"] = goals[0].astype(int)
+    df["away_goals"] = goals[1].astype(int)
+    return df 
+
+def summarise_season(matches: pd.DataFrame) -> pd.DataFrame:
+    """Summarise a season into per‑team statistics and final ranking.
+
+    Given a DataFrame of matches with columns `Team 1`, `Team 2`,
+    `home_goals` and `away_goals`, compute the total points, wins,
+    draws, losses, goals for and against and goal difference for each
+    team.  After accumulating statistics, the teams are sorted by
+    points (descending), goal difference (descending) and goals for
+    (descending) to determine the final ranking.
+    
+    Parameters
+    ----------
+    matches : DataFrame
+        DataFrame of parsed match results.
+
+    Returns
