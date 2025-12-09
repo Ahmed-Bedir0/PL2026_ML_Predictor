@@ -112,3 +112,97 @@ def summarise_season(matches: pd.DataFrame) -> pd.DataFrame:
         DataFrame of parsed match results.
 
     Returns
+
+  -------
+    DataFrame
+        Summary of the season with one row per team and columns:
+        [`team`, `points`, `wins`, `draws`, `losses`, `goals_for`,
+        `goals_against`, `goal_diff`, `position`].
+    """
+    teams: Dict[str, Dict[str, int]] = defaultdict(lambda: {
+        "points": 0,
+        "wins": 0,
+        "draws": 0,
+        "losses": 0,
+        "goals_for": 0,
+        "goals_against": 0,
+    })
+
+# iterate through each match and update team statistics
+    for _, row in matches.iterrows():
+        home, away = row["Team 1"], row["Team 2"]
+        hg, ag = row["home_goals"], row["away_goals"]
+        # update goals
+        teams[home]["goals_for"] += hg
+        teams[home]["goals_against"] += ag
+        teams[away]["goals_for"] += ag
+        teams[away]["goals_against"] += hg
+        # determine match outcome
+
+  if hg > ag:
+            # home win
+            teams[home]["points"] += 3
+            teams[home]["wins"] += 1
+            teams[away]["losses"] += 1
+        elif hg < ag:
+            # away win
+            teams[away]["points"] += 3
+            teams[away]["wins"] += 1
+            teams[home]["losses"] += 1
+        else:
+            # draw
+            teams[home]["points"] += 1
+            teams[away]["points"] += 1
+            teams[home]["draws"] += 1
+            teams[away]["draws"] += 1
+    # build DataFrame
+
+data = []
+    for team, stats in teams.items():
+        goal_diff = stats["goals_for"] - stats["goals_against"]
+        data.append({
+            "team": team,
+            "points": stats["points"],
+            "wins": stats["wins"],
+            "draws": stats["draws"],
+            "losses": stats["losses"],
+            "goals_for": stats["goals_for"],
+            "goals_against": stats["goals_against"],
+            "goal_diff": goal_diff,
+        })
+
+  summary = pd.DataFrame(data)
+    # sort by points, goal diff, goals for
+    summary = summary.sort_values(
+        ["points", "goal_diff", "goals_for"], ascending=[False, False, False]
+    ).reset_index(drop=True)
+    summary["position"] = summary.index + 1
+    return summary
+
+def prepare_training_data(season_files: List[str]) -> Tuple[pd.DataFrame, pd.Series, pd.DataFrame]:
+    """Prepare training features and labels from a list of seasons.
+
+    Given a list of file paths ordered chronologically, compute per‑team
+    statistics for each season and build a dataset where the feature
+    vector for season `n+1` comes from the statistics of season `n`.
+    Teams promoted into the Premier League without previous season
+    statistics are assigned default feature values equal to the
+    average of the bottom three clubs in the prior season.
+
+    Parameters
+    ----------
+    season_files : list of str
+        Paths to season CSV files ordered from oldest to newest.
+
+
+    Returns
+    -------
+    X_train : DataFrame
+        Feature matrix (numeric) for training.
+    y_train : Series
+        Target series containing league positions (1–20).
+    latest_features : DataFrame
+        Feature matrix for the most recent season in the list (used
+        for prediction).
+    """
+    season_summaries: Dict[str, pd.DataFrame] = {}
