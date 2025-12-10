@@ -206,3 +206,19 @@ def prepare_training_data(season_files: List[str]) -> Tuple[pd.DataFrame, pd.Ser
         for prediction).
     """
     season_summaries: Dict[str, pd.DataFrame] = {}
+  
+  # compute summary stats for each season
+    for file_path in season_files:
+        raw = pd.read_csv(file_path)
+        parsed = parse_match_results(raw)
+        summary = summarise_season(parsed)
+        season_summaries[file_path] = summary
+
+  # Build training dataset: use season n's stats to predict season n+1's position
+    feature_rows = []
+    target_rows = []
+    files_sorted = season_files
+    
+    for i in range(len(files_sorted) - 1):
+        prev_summary = season_summaries[files_sorted[i]].copy().set_index("team")
+        curr_summary = season_summaries[files_sorted[i + 1]].copy().set_index("team")
