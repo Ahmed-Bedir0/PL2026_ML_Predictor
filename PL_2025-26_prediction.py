@@ -222,3 +222,16 @@ def prepare_training_data(season_files: List[str]) -> Tuple[pd.DataFrame, pd.Ser
     for i in range(len(files_sorted) - 1):
         prev_summary = season_summaries[files_sorted[i]].copy().set_index("team")
         curr_summary = season_summaries[files_sorted[i + 1]].copy().set_index("team")
+
+# compute default features based on bottom three teams from previous season
+        bottom_three = prev_summary.sort_values(
+            ["points", "goal_diff", "goals_for"], ascending=[True, True, True]
+        ).head(3)
+        default_features = bottom_three.mean().to_dict()
+        # for each team in current season, collect features
+        for team, row in curr_summary.iterrows():
+            if team in prev_summary.index:
+                feats = prev_summary.loc[team][
+                    ["points", "wins", "draws", "losses", "goals_for", "goals_against", "goal_diff"]
+                ].to_dict()
+              
