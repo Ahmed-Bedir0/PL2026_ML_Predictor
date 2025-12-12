@@ -234,4 +234,13 @@ def prepare_training_data(season_files: List[str]) -> Tuple[pd.DataFrame, pd.Ser
                 feats = prev_summary.loc[team][
                     ["points", "wins", "draws", "losses", "goals_for", "goals_against", "goal_diff"]
                 ].to_dict()
-              
+         else:
+                # promoted team – assign default bottom three stats
+                feats = {k: default_features[k] for k in [
+                    "points", "wins", "draws", "losses", "goals_for", "goals_against", "goal_diff"
+                ]}
+            feature_rows.append(feats)
+            target_rows.append(row["position"])
+
+  X_train = pd.DataFrame(feature_rows)
+    y_train = pd.Series(target_rows)
