@@ -244,3 +244,61 @@ def prepare_training_data(season_files: List[str]) -> Tuple[pd.DataFrame, pd.Ser
 
   X_train = pd.DataFrame(feature_rows)
     y_train = pd.Series(target_rows)
+
+   # features for the most recent season for which we will predict the next season
+    last_summary = season_summaries[files_sorted[-1]].copy().set_index("team")
+    # compute default features for new promoted teams in the upcoming season
+    # this uses bottom three of last_summary
+    bottom_three_last = last_summary.sort_values(
+        ["points", "goal_diff", "goals_for"], ascending=[True, True, True]
+    ).head(3)
+    default_features_last = bottom_three_last.mean().to_dict()
+    latest_features_rows = []
+    latest_teams = last_summary.index.tolist()
+    # incorporate promoted teams for 2025/26 (Leeds United, Burnley, Sunderland)
+    promoted = ["Leeds United", "Burnley", "Sunderland"]
+
+# if a promoted team already exists in last_summary (e.g. Burnley was relegated earlier), use its stats
+    for team in latest_teams:
+        feats = last_summary.loc[team][
+            ["points", "wins", "draws", "losses", "goals_for", "goals_against", "goal_diff"]
+        ].to_dict()
+        latest_features_rows.append((team, feats))
+
+for team in promoted:
+        if team not in latest_teams:
+            feats = {k: default_features_last[k] for k in [
+                "points", "wins", "draws", "losses", "goals_for", "goals_against", "goal_diff"
+            ]}
+            latest_features_rows.append((team, feats))
+    latest_features_df = pd.DataFrame([feats for _, feats in latest_features_rows],
+                                      index=[t for t, _ in latest_features_rows])
+    return X_train, y_train, latest_features_df
+
+
+def build_and_train_model(X: pd.DataFrame, y: pd.Series) -> Pipeline:
+    """Create a pipeline that scales features and trains a RandomForest.
+
+    Parameters
+    ----------
+    X : DataFrame
+        Training features.
+    y : Series
+        Target positions (1–20).
+
+ Returns
+    -------
+    Pipeline
+        Scikit‑learn pipeline with StandardScaler and RandomForestClassifier.
+    """
+    model = Pipeline([
+        ("scaler", StandardScaler()),
+        ("rf", RandomForestClassifier(
+            n_estimators=100,
+            max_depth=8,
+            random_state=42,
+            class_weight="balanced"
+        ))
+    ])
+    model.fit(X, y)
+    return model
