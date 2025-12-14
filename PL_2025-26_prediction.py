@@ -113,7 +113,7 @@ def summarise_season(matches: pd.DataFrame) -> pd.DataFrame:
 
     Returns
 
-  -------
+    -------
     DataFrame
         Summary of the season with one row per team and columns:
         [`team`, `points`, `wins`, `draws`, `losses`, `goals_for`,
@@ -128,7 +128,7 @@ def summarise_season(matches: pd.DataFrame) -> pd.DataFrame:
         "goals_against": 0,
     })
 
-# iterate through each match and update team statistics
+    # iterate through each match and update team statistics
     for _, row in matches.iterrows():
         home, away = row["Team 1"], row["Team 2"]
         hg, ag = row["home_goals"], row["away_goals"]
@@ -139,7 +139,7 @@ def summarise_season(matches: pd.DataFrame) -> pd.DataFrame:
         teams[away]["goals_against"] += hg
         # determine match outcome
 
-  if hg > ag:
+        if hg > ag:
             # home win
             teams[home]["points"] += 3
             teams[home]["wins"] += 1
@@ -157,7 +157,7 @@ def summarise_season(matches: pd.DataFrame) -> pd.DataFrame:
             teams[away]["draws"] += 1
     # build DataFrame
 
-data = []
+    data = []
     for team, stats in teams.items():
         goal_diff = stats["goals_for"] - stats["goals_against"]
         data.append({
@@ -171,7 +171,7 @@ data = []
             "goal_diff": goal_diff,
         })
 
-  summary = pd.DataFrame(data)
+    summary = pd.DataFrame(data)
     # sort by points, goal diff, goals for
     summary = summary.sort_values(
         ["points", "goal_diff", "goals_for"], ascending=[False, False, False]
@@ -207,14 +207,14 @@ def prepare_training_data(season_files: List[str]) -> Tuple[pd.DataFrame, pd.Ser
     """
     season_summaries: Dict[str, pd.DataFrame] = {}
   
-  # compute summary stats for each season
+    # compute summary stats for each season
     for file_path in season_files:
         raw = pd.read_csv(file_path)
         parsed = parse_match_results(raw)
         summary = summarise_season(parsed)
         season_summaries[file_path] = summary
 
-  # Build training dataset: use season n's stats to predict season n+1's position
+    # Build training dataset: use season n's stats to predict season n+1's position
     feature_rows = []
     target_rows = []
     files_sorted = season_files
@@ -223,7 +223,7 @@ def prepare_training_data(season_files: List[str]) -> Tuple[pd.DataFrame, pd.Ser
         prev_summary = season_summaries[files_sorted[i]].copy().set_index("team")
         curr_summary = season_summaries[files_sorted[i + 1]].copy().set_index("team")
 
-# compute default features based on bottom three teams from previous season
+        # compute default features based on bottom three teams from previous season
         bottom_three = prev_summary.sort_values(
             ["points", "goal_diff", "goals_for"], ascending=[True, True, True]
         ).head(3)
@@ -234,7 +234,7 @@ def prepare_training_data(season_files: List[str]) -> Tuple[pd.DataFrame, pd.Ser
                 feats = prev_summary.loc[team][
                     ["points", "wins", "draws", "losses", "goals_for", "goals_against", "goal_diff"]
                 ].to_dict()
-         else:
+            else:
                 # promoted team – assign default bottom three stats
                 feats = {k: default_features[k] for k in [
                     "points", "wins", "draws", "losses", "goals_for", "goals_against", "goal_diff"
@@ -242,10 +242,10 @@ def prepare_training_data(season_files: List[str]) -> Tuple[pd.DataFrame, pd.Ser
             feature_rows.append(feats)
             target_rows.append(row["position"])
 
-  X_train = pd.DataFrame(feature_rows)
+    X_train = pd.DataFrame(feature_rows)
     y_train = pd.Series(target_rows)
 
-   # features for the most recent season for which we will predict the next season
+    # features for the most recent season for which we will predict the next season
     last_summary = season_summaries[files_sorted[-1]].copy().set_index("team")
     # compute default features for new promoted teams in the upcoming season
     # this uses bottom three of last_summary
@@ -258,14 +258,14 @@ def prepare_training_data(season_files: List[str]) -> Tuple[pd.DataFrame, pd.Ser
     # incorporate promoted teams for 2025/26 (Leeds United, Burnley, Sunderland)
     promoted = ["Leeds United", "Burnley", "Sunderland"]
 
-# if a promoted team already exists in last_summary (e.g. Burnley was relegated earlier), use its stats
+    # if a promoted team already exists in last_summary (e.g. Burnley was relegated earlier), use its stats
     for team in latest_teams:
         feats = last_summary.loc[team][
             ["points", "wins", "draws", "losses", "goals_for", "goals_against", "goal_diff"]
         ].to_dict()
         latest_features_rows.append((team, feats))
 
-for team in promoted:
+    for team in promoted:
         if team not in latest_teams:
             feats = {k: default_features_last[k] for k in [
                 "points", "wins", "draws", "losses", "goals_for", "goals_against", "goal_diff"
@@ -286,7 +286,7 @@ def build_and_train_model(X: pd.DataFrame, y: pd.Series) -> Pipeline:
     y : Series
         Target positions (1–20).
 
- Returns
+    Returns
     -------
     Pipeline
         Scikit‑learn pipeline with StandardScaler and RandomForestClassifier.
@@ -302,3 +302,73 @@ def build_and_train_model(X: pd.DataFrame, y: pd.Series) -> Pipeline:
     ])
     model.fit(X, y)
     return model
+
+def predict_league_table(model: Pipeline, features: pd.DataFrame) -> pd.DataFrame:
+    """Predict the league table ordering for the given features.
+
+    Parameters
+    ----------
+    model : Pipeline
+        Trained scikit‑learn pipeline.
+    features : DataFrame
+        Feature rows indexed by team name.
+
+    Returns
+    -------
+    DataFrame
+        Predicted positions sorted from 1 to 20.
+    """
+    # use predicted probabilities to compute an expected finishing
+    # position.  RandomForestClassifier returns a probability
+    # distribution over the 20 possible finishing positions.  By
+    # multiplying each probability by its corresponding class index
+    # (1–20) we obtain an expected (fractional) finishing position.
+    probas = model.predict_proba(features)
+    classes = model.named_steps["rf"].classes_
+    exp_positions = probas.dot(classes)
+    prediction_df = pd.DataFrame({
+        "team": features.index,
+        "expected_position": exp_positions
+    })
+
+    # sort teams by lowest expected position (i.e. best finish)
+    prediction_df = prediction_df.sort_values("expected_position").reset_index(drop=True)
+    # assign integer ranks 1..n based on sorted order
+    prediction_df["predicted_rank"] = prediction_df.index + 1
+    return prediction_df[["predicted_rank", "team", "expected_position"]]
+
+
+def main():
+    # define the season files in chronological order
+    season_files = [
+        os.path.join(os.path.dirname(__file__), "PL_2018-19.csv"),
+        os.path.join(os.path.dirname(__file__), "PL_2019-20.csv"),
+        os.path.join(os.path.dirname(__file__), "PL_2020-21.csv"),
+        os.path.join(os.path.dirname(__file__), "PL_2021-22.csv"),
+        os.path.join(os.path.dirname(__file__), "PL_2022-23.csv"),
+        os.path.join(os.path.dirname(__file__), "PL_2023-24.csv"),
+        os.path.join(os.path.dirname(__file__), "PL_2024-25.csv"),
+    ]
+
+    # prepare training data
+    X_train, y_train, latest_features = prepare_training_data(season_files)
+    # train model
+    model = build_and_train_model(X_train, y_train)
+    # predict ranking for 2025/26
+    predictions = predict_league_table(model, latest_features)
+
+    # Keep only the top 20 teams based on expected position. In reality,
+    # the Premier League contains exactly 20 clubs. This ensures we return
+    # the standard league table format.
+    predictions = predictions.iloc[:20].copy()
+    
+    print("Predicted Premier League 2025/26 table (1 = champion):")
+    for _, row in predictions.iterrows():
+        print(
+            f"{int(row['predicted_rank'])}. {row['team']} "
+            f"(expected pos {row['expected_position']:.2f})"
+        )
+
+
+if __name__ == "__main__":
+    main()
