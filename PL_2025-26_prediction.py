@@ -11,7 +11,7 @@ The 2025/26 Premier League will include 20 clubs – the 17 sides that remained 
 division in 2024/25 and three promoted clubs (Leeds United, Burnley
 and Sunderland)
 
-Each CSV file (e.g., `PL_2018-19.csv`, `PL_2019-20.csv`, etc.)
+Each CSV file (e.g., `PL_2018-2019.csv`, `PL_2019-2020.csv`, etc.)
 lists every Premier League match in the given season with columns for
 the date, home side (Team 1), final score (FT), half‑time score (HT)
 and away side (Team 2). An example of the first few rows of the
@@ -341,13 +341,13 @@ def predict_league_table(model: Pipeline, features: pd.DataFrame) -> pd.DataFram
 def main():
     # define the season files in chronological order
     season_files = [
-        os.path.join(os.path.dirname(__file__), "PL_2018-19.csv"),
-        os.path.join(os.path.dirname(__file__), "PL_2019-20.csv"),
-        os.path.join(os.path.dirname(__file__), "PL_2020-21.csv"),
-        os.path.join(os.path.dirname(__file__), "PL_2021-22.csv"),
-        os.path.join(os.path.dirname(__file__), "PL_2022-23.csv"),
-        os.path.join(os.path.dirname(__file__), "PL_2023-24.csv"),
-        os.path.join(os.path.dirname(__file__), "PL_2024-25.csv"),
+        os.path.join(os.path.dirname(__file__), "PL_2018-2019.csv"),
+        os.path.join(os.path.dirname(__file__), "PL_2019-2020.csv"),
+        os.path.join(os.path.dirname(__file__), "PL_2020-2021.csv"),
+        os.path.join(os.path.dirname(__file__), "PL_2021-2022.csv"),
+        os.path.join(os.path.dirname(__file__), "PL_2022-2023.csv"),
+        os.path.join(os.path.dirname(__file__), "PL_2023-2024.csv"),
+        os.path.join(os.path.dirname(__file__), "PL_2024-2025.csv"),
     ]
 
     # prepare training data
