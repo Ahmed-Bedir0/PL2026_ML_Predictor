@@ -254,7 +254,7 @@ def prepare_training_data(season_files: List[str]) -> Tuple[pd.DataFrame, pd.Ser
     ).head(3)
     default_features_last = bottom_three_last.mean().to_dict()
     latest_features_rows = []
-    latest_teams = last_summary.index.tolist()
+    latest_teams = last_summary.head(17).index.tolist()
     # incorporate promoted teams for 2025/26 (Leeds United, Burnley, Sunderland)
     promoted = ["Leeds United", "Burnley", "Sunderland"]
 
@@ -265,12 +265,14 @@ def prepare_training_data(season_files: List[str]) -> Tuple[pd.DataFrame, pd.Ser
         ].to_dict()
         latest_features_rows.append((team, feats))
 
-    for team in promoted:
-        if team not in latest_teams:
-            feats = {k: default_features_last[k] for k in [
-                "points", "wins", "draws", "losses", "goals_for", "goals_against", "goal_diff"
-            ]}
-            latest_features_rows.append((team, feats))
+  promotion_weights = {"Sunderland": 1.30, "Leeds United": 1.10, "Burnley": 1.00}
+for team in promoted:
+    if team not in latest_teams:
+        weight = promotion_weights.get(team, 1.00)
+        feats = {k: default_features_last[k] * weight for k in [
+            "points", "wins", "draws", "losses", "goals_for", "goals_against", "goal_diff"
+        ]}
+        latest_features_rows.append((team, feats))
     latest_features_df = pd.DataFrame([feats for _, feats in latest_features_rows],
                                       index=[t for t, _ in latest_features_rows])
     return X_train, y_train, latest_features_df
