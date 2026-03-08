@@ -269,8 +269,9 @@ def prepare_training_data(season_files: List[str]) -> Tuple[pd.DataFrame, pd.Ser
     for team in promoted:
         if team not in latest_teams:
             weight = promotion_weights.get(team, 1.00)
-            feats = {k: default_features_last[k] * weight for k in [
-                "points", "wins", "draws", "losses", "goals_for", "goals_against", "goal_diff"
+            good = {"points", "wins", "draws", "goals_for", "goal_diff"}
+            feats = {k: default_features_last[k] * (weight if k in good else 1/weight) for k in [
+            "points", "wins", "draws", "losses", "goals_for", "goals_against", "goal_diff"
             ]}
             latest_features_rows.append((team, feats))
     latest_features_df = pd.DataFrame([feats for _, feats in latest_features_rows],
