@@ -265,14 +265,14 @@ def prepare_training_data(season_files: List[str]) -> Tuple[pd.DataFrame, pd.Ser
         ].to_dict()
         latest_features_rows.append((team, feats))
 
-  promotion_weights = {"Sunderland": 1.30, "Leeds United": 1.10, "Burnley": 1.00}
-for team in promoted:
-    if team not in latest_teams:
-        weight = promotion_weights.get(team, 1.00)
-        feats = {k: default_features_last[k] * weight for k in [
-            "points", "wins", "draws", "losses", "goals_for", "goals_against", "goal_diff"
-        ]}
-        latest_features_rows.append((team, feats))
+    promotion_weights = {"Sunderland": 1.30, "Leeds United": 1.10, "Burnley": 1.00}
+    for team in promoted:
+        if team not in latest_teams:
+            weight = promotion_weights.get(team, 1.00)
+            feats = {k: default_features_last[k] * weight for k in [
+                "points", "wins", "draws", "losses", "goals_for", "goals_against", "goal_diff"
+            ]}
+            latest_features_rows.append((team, feats))
     latest_features_df = pd.DataFrame([feats for _, feats in latest_features_rows],
                                       index=[t for t, _ in latest_features_rows])
     return X_train, y_train, latest_features_df
@@ -359,10 +359,6 @@ def main():
     # predict ranking for 2025/26
     predictions = predict_league_table(model, latest_features)
 
-    # Keep only the top 20 teams based on expected position. In reality,
-    # the Premier League contains exactly 20 clubs. This ensures we return
-    # the standard league table format.
-    predictions = predictions.iloc[:20].copy()
     
     print("Predicted Premier League 2025/26 table (1 = champion):")
     for _, row in predictions.iterrows():
